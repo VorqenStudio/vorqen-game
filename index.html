@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>VORQEN Runner</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090b18;color:white;font-family:Arial;overflow:hidden}
+#game{display:block;width:100vw;height:100dvh;touch-action:none}
+#ui{position:fixed;top:18px;left:0;right:0;display:flex;justify-content:space-around;font-weight:bold;pointer-events:none}
+#start{position:fixed;inset:0;background:#090b18dd;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px}
+h1{font-size:42px;color:#a99aff;letter-spacing:4px;margin:0}
+p{line-height:1.7;color:#d2d4e8}
+button{background:#9278ff;color:white;border:0;border-radius:14px;padding:15px 30px;font-size:18px;font-weight:bold}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui"><span>⭐ <b id="score">0</b></span><span>🪙 <b id="coins">0</b></span></div>
+<div id="start">
+<h1>VORQEN</h1>
+<p id="msg">اركض، اقفز، وانزلق!<br>اسحب للأعلى للقفز وللأسفل للانزلاق.<br>اجمع العملات وتجنب العقبات.</p>
+<button id="play">ابدأ اللعب</button>
+</div>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d');
+let w,h,playing=false,score=0,coins=0,speed=5,playerY=0,jump=0,slide=0,obs=[],gold=[],last=0,spawn=0;
+function resize(){w=c.width=innerWidth*devicePixelRatio;h=c.height=innerHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);w=innerWidth;h=innerHeight}
+onresize=resize;resize();
+function reset(){score=0;coins=0;speed=5;jump=0;slide=0;obs=[];gold=[];spawn=0;last=0;playing=true;document.getElementById('score').textContent=0;document.getElementById('coins').textContent=0;document.getElementById('start').style.display='none';requestAnimationFrame(loop)}
+function act(dy){if(!playing)return;if(dy<0&&jump<=0&&slide<=0)jump=95;else if(dy>0&&jump<=0)slide=35}
+let sy=0;
+c.addEventListener('touchstart',e=>{sy=e.touches[0].clientY},{passive:true});
+c.addEventListener('touchend',e=>{let dy=e.changedTouches[0].clientY-sy;if(Math.abs(dy)>20)act(dy);else if(dy===0){}},{passive:true});
+c.addEventListener('mousedown',e=>{sy=e.clientY});
+c.addEventListener('mouseup',e=>{let dy=e.clientY-sy;if(Math.abs(dy)>20)act(dy)});
+function rect(a,b,d,e,color){x.fillStyle=color;x.fillRect(a,b,d,e)}
+function loop(t){
+if(!playing)return;
+let dt=Math.min((t-last)/16||1,2);last=t;score+=dt;speed=Math.min(11,5+score/900);
+rect(0,0,w,h,'#0a1024');
+let horizon=h*.48;
+let grad=x.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#11183b');grad.addColorStop(1,'#20204b');rect(0,horizon,w,h-horizon,'#171a38');
+x.strokeStyle='#5653a8';x.lineWidth=2;
+for(let i=0;i<12;i++){let yy=horizon+(h-horizon)*i/12; x.beginPath();x.moveTo(0,yy);x.lineTo(w,yy);x.stroke()}
+x.beginPath();x.moveTo(w*.5,horizon);x.lineTo(0,h);x.moveTo(w*.5,horizon);x.lineTo(w,h);x.stroke();
+spawn+=dt;
+if(spawn>55){spawn=0;let lane=Math.random();obs.push({x:w*(.25+lane*.5),y:horizon+15,size:24+Math.random()*12,type:Math.random()>.5?'block':'bar'});if(Math.random()>.25)gold.push({x:w*(.3+Math.random()*.4),y:horizon+5})}
+obs.forEach(o=>{o.y+=speed*dt*1.5;o.size+=dt*.25;let sz=o.size;rect(o.x-sz/2,o.y-sz/2,sz,sz,o.type==='block'?'#ff477e':'#ffad42');if(o.y>h*.78&&o.y<h*.88&&jump<20&&slide<=0&&Math.abs(o.x-w*.5)<w*.13){playing=false;document.getElementById('msg').textContent='انتهت الجولة! نتيجتك: '+Math.floor(score/5);document.getElementById('play').textContent='العب مجددًا';document.getElementById('start').style.display='flex'}});
+gold.forEach(g=>{g.y+=speed*dt*1.5;x.fillStyle='#ffd75e';x.beginPath();x.arc(g.x,g.y,9,0,Math.PI*2);x.fill();if(!g.got&&g.y>h*.78&&g.y<h*.9&&Math.abs(g.x-w*.5)<w*.12){g.got=true;coins++;document.getElementById('coins').textContent=coins}});
+obs=obs.filter(o=>o.y<h+50);gold=gold.filter(g=>g.y<h+30&&!g.got);
+if(jump>0)jump=Math.max(0,jump-3*dt);if(slide>0)slide=Math.max(0,slide-dt);
+let py=h*.82-(jump>0?Math.sin((95-jump)/95*Math.PI)*h*.16:0);
+x.fillStyle='#9d8bff';x.beginPath();x.ellipse(w*.5,py,slide>0?25:17,slide>0?12:23,0,0,Math.PI*2);x.fill();
+rect(w*.5-12,py-35,24,25,'#c4b8ff');
+x.fillStyle='#fff';x.font='bold 18px Arial';x.fillText('VORQEN',w/2-40, h-25);
+document.getElementById('score').textContent=Math.floor(score/5);
+requestAnimationFrame(loop)
+}
+document.getElementById('play').onclick=reset;
+</script>
+</body>
+</html>
