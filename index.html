@@ -4,62 +4,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>VORQEN Runner</title>
+<title>VORQEN RUNNER</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#090b18;color:white;font-family:Arial;overflow:hidden}
-#game{display:block;width:100vw;height:100dvh;touch-action:none}
-#ui{position:fixed;top:18px;left:0;right:0;display:flex;justify-content:space-around;font-weight:bold;pointer-events:none}
-#start{position:fixed;inset:0;background:#090b18dd;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px}
-h1{font-size:42px;color:#a99aff;letter-spacing:4px;margin:0}
-p{line-height:1.7;color:#d2d4e8}
-button{background:#9278ff;color:white;border:0;border-radius:14px;padding:15px 30px;font-size:18px;font-weight:bold}
+body{margin:0;background:#050914;color:white;font-family:Arial,sans-serif;overflow:hidden;touch-action:none}
+#game{display:block;width:100vw;height:100dvh}
+#hud{position:absolute;top:16px;left:0;right:0;display:flex;justify-content:space-around;pointer-events:none;text-shadow:0 2px 8px #00d9ff}
+.stat{text-align:center;font-size:12px;color:#9beeff;letter-spacing:2px}
+.stat b{display:block;color:white;font-size:24px;margin-top:5px}
+#brand{position:absolute;top:105px;width:100%;text-align:center;font-weight:900;letter-spacing:7px;color:#65f3ff;text-shadow:0 0 20px #00bfff;font-size:22px;pointer-events:none}
+#panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#030817aa,#030817dd);text-align:center;padding:24px}
+.box{width:min(340px,100%);padding:28px 20px;border:1px solid #35dfff77;border-radius:22px;background:#08172bea;box-shadow:0 0 40px #00bfff22}
+h1{font-size:36px;letter-spacing:5px;margin:0;color:#6df6ff;text-shadow:0 0 20px #00cfff}
+p{color:#c5d8ef;line-height:1.8;font-size:14px}
+button{border:0;border-radius:12px;background:linear-gradient(100deg,#00cfff,#547bff);color:#04101c;font-size:17px;font-weight:900;padding:15px 28px;width:100%;margin-top:12px}
+.small{font-size:12px;color:#8da9c9}
+#hint{position:absolute;bottom:18px;width:100%;text-align:center;color:#a9d5ed;font-size:12px;pointer-events:none;text-shadow:0 1px 4px #000}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="ui"><span>⭐ <b id="score">0</b></span><span>🪙 <b id="coins">0</b></span></div>
-<div id="start">
-<h1>VORQEN</h1>
-<p id="msg">اركض، اقفز، وانزلق!<br>اسحب للأعلى للقفز وللأسفل للانزلاق.<br>اجمع العملات وتجنب العقبات.</p>
-<button id="play">ابدأ اللعب</button>
+<div id="hud">
+ <div class="stat">SCORE<b id="score">0</b></div>
+ <div class="stat">COINS<b id="coins">0</b></div>
+ <div class="stat">BEST<b id="best">0</b></div>
 </div>
+<div id="brand">VORQEN</div>
+<div id="panel">
+ <div class="box">
+  <h1 id="title">VORQEN</h1>
+  <p id="message">RUN THE FUTURE<br>اركض، اقفز، تفادَ العقبات واجمع العملات.</p>
+  <button id="start">ابدأ اللعب</button>
+  <p class="small">↑ قفز &nbsp; ↓ انزلاق &nbsp; ← → تغيير المسار</p>
+ </div>
+</div>
+<div id="hint">اسحب بإصبعك للتحكم بالشخصية</div>
 <script>
-const c=document.getElementById('game'),x=c.getContext('2d');
-let w,h,playing=false,score=0,coins=0,speed=5,playerY=0,jump=0,slide=0,obs=[],gold=[],last=0,spawn=0;
-function resize(){w=c.width=innerWidth*devicePixelRatio;h=c.height=innerHeight*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);w=innerWidth;h=innerHeight}
-onresize=resize;resize();
-function reset(){score=0;coins=0;speed=5;jump=0;slide=0;obs=[];gold=[];spawn=0;last=0;playing=true;document.getElementById('score').textContent=0;document.getElementById('coins').textContent=0;document.getElementById('start').style.display='none';requestAnimationFrame(loop)}
-function act(dy){if(!playing)return;if(dy<0&&jump<=0&&slide<=0)jump=95;else if(dy>0&&jump<=0)slide=35}
-let sy=0;
-c.addEventListener('touchstart',e=>{sy=e.touches[0].clientY},{passive:true});
-c.addEventListener('touchend',e=>{let dy=e.changedTouches[0].clientY-sy;if(Math.abs(dy)>20)act(dy);else if(dy===0){}},{passive:true});
-c.addEventListener('mousedown',e=>{sy=e.clientY});
-c.addEventListener('mouseup',e=>{let dy=e.clientY-sy;if(Math.abs(dy)>20)act(dy)});
-function rect(a,b,d,e,color){x.fillStyle=color;x.fillRect(a,b,d,e)}
-function loop(t){
-if(!playing)return;
-let dt=Math.min((t-last)/16||1,2);last=t;score+=dt;speed=Math.min(11,5+score/900);
-rect(0,0,w,h,'#0a1024');
-let horizon=h*.48;
-let grad=x.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#11183b');grad.addColorStop(1,'#20204b');rect(0,horizon,w,h-horizon,'#171a38');
-x.strokeStyle='#5653a8';x.lineWidth=2;
-for(let i=0;i<12;i++){let yy=horizon+(h-horizon)*i/12; x.beginPath();x.moveTo(0,yy);x.lineTo(w,yy);x.stroke()}
-x.beginPath();x.moveTo(w*.5,horizon);x.lineTo(0,h);x.moveTo(w*.5,horizon);x.lineTo(w,h);x.stroke();
-spawn+=dt;
-if(spawn>55){spawn=0;let lane=Math.random();obs.push({x:w*(.25+lane*.5),y:horizon+15,size:24+Math.random()*12,type:Math.random()>.5?'block':'bar'});if(Math.random()>.25)gold.push({x:w*(.3+Math.random()*.4),y:horizon+5})}
-obs.forEach(o=>{o.y+=speed*dt*1.5;o.size+=dt*.25;let sz=o.size;rect(o.x-sz/2,o.y-sz/2,sz,sz,o.type==='block'?'#ff477e':'#ffad42');if(o.y>h*.78&&o.y<h*.88&&jump<20&&slide<=0&&Math.abs(o.x-w*.5)<w*.13){playing=false;document.getElementById('msg').textContent='انتهت الجولة! نتيجتك: '+Math.floor(score/5);document.getElementById('play').textContent='العب مجددًا';document.getElementById('start').style.display='flex'}});
-gold.forEach(g=>{g.y+=speed*dt*1.5;x.fillStyle='#ffd75e';x.beginPath();x.arc(g.x,g.y,9,0,Math.PI*2);x.fill();if(!g.got&&g.y>h*.78&&g.y<h*.9&&Math.abs(g.x-w*.5)<w*.12){g.got=true;coins++;document.getElementById('coins').textContent=coins}});
-obs=obs.filter(o=>o.y<h+50);gold=gold.filter(g=>g.y<h+30&&!g.got);
-if(jump>0)jump=Math.max(0,jump-3*dt);if(slide>0)slide=Math.max(0,slide-dt);
-let py=h*.82-(jump>0?Math.sin((95-jump)/95*Math.PI)*h*.16:0);
-x.fillStyle='#9d8bff';x.beginPath();x.ellipse(w*.5,py,slide>0?25:17,slide>0?12:23,0,0,Math.PI*2);x.fill();
-rect(w*.5-12,py-35,24,25,'#c4b8ff');
-x.fillStyle='#fff';x.font='bold 18px Arial';x.fillText('VORQEN',w/2-40, h-25);
-document.getElementById('score').textContent=Math.floor(score/5);
-requestAnimationFrame(loop)
+(()=>{
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W,H,dpr,playing=false,frame=0,score=0,coins=0,speed=5;
+let objects=[],particles=[],lane=1,jump=0,slide=0,spawn=0;
+let best=0;
+try{best=Number(localStorage.getItem('vorqenBest'))||0}catch(e){}
+$('best').textContent=best;
+function resize(){
+ dpr=Math.min(devicePixelRatio||1,2);
+ W=innerWidth;H=innerHeight;
+ canvas.width=W*dpr;canvas.height=H*dpr;
+ canvas.style.width=W+'px';canvas.style.height=H+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-document.getElementById('play').onclick=reset;
+addEventListener('resize',resize);resize();
+function roadY(t){return H*.23+t*t*H*.8}
+function roadX(t,l){
+ let half=(W*.16+t*W*.42);
+ return W/2+(l-1)*half;
+}
+function reset(){
+ frame=0;score=0;coins=0;speed=5;lane=1;jump=0;slide=0;
+ objects=[];particles=[];spawn=20;
+ updateHUD();
+}
+function updateHUD(){
+ $('score').textContent=Math.floor(score);
+ $('coins').textContent=coins;
+}
+function start(){
+ reset();playing=true;$('panel').style.display='none';
+}
+$('start').addEventListener('click',start);
+function endGame(){
+ playing=false;
+ if(Math.floor(score)>best){
+  best=Math.floor(score);
+  try{localStorage.setItem('vorqenBest',best)}catch(e){}
+ }
+ $('best').textContent=best;
+ $('title').textContent='انتهت اللعبة';
+ $('message').innerHTML='النتيجة: <b>'+Math.floor(score)+'</b><br>العملات التي جمعتها: <b>'+coins+'</b><br>هل تستطيع تحقيق نتيجة أفضل؟';
+ $('start').textContent='العب مجددًا';
+ $('panel').style.display='flex';
+}
+function rounded(x,y,w,h,r,color){
+ ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();
+}
+function drawBackground(){
+ let g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,'#050b20');g.addColorStop(.55,'#122344');g.addColorStop(1,'#080c18');
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<32;i++){
+  let x=(i*137)%W,y=((i*83+frame*.18)%(H*.65));
+  ctx.fillStyle=i%3?'#608ac0':'#8df8ff';
+  ctx.globalAlpha=.2+((i%4)*.12);
+  ctx.fillRect(x,y,2,2);
+ }
+ ctx.globalAlpha=1;
+ // futuristic skyline
+ for(let i=0;i<13;i++){
+  let bw=W/10,bx=i*bw-W*.02;
+  let bh=H*(.08+((i*37)%13)/100);
+  ctx.fillStyle='#0a1730';ctx.fillRect(bx,H*.35-bh,bw*.8,bh);
+  ctx.fillStyle='#1a6682';ctx.globalAlpha=.35;
+  for(let j=0;j<4;j++)ctx.fillRect(bx+5+j*8,H*.35-bh+8,2,Math.max(3,bh-12));
+  ctx.globalAlpha=1;
+ }
+ // road
+ ctx.beginPath();ctx.moveTo(W*.43,H*.23);ctx.lineTo(W*.57,H*.23);
+ ctx.lineTo(W*1.08,H);ctx.lineTo(-W*.08,H);ctx.closePath();
+ let rg=ctx.createLinearGradient(0,H*.25,0,H);
+ rg.addColorStop(0,'#182d4a');rg.addColorStop(1,'#101727');
+ ctx.fillStyle=rg;ctx.fill();
+ ctx.strokeStyle='#31eaff';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(W*.43,H*.23);ctx.lineTo(-W*.08,H);ctx.moveTo(W*.57,H*.23);ctx.lineTo(W*1.08,H);ctx.stroke();
+ // lane dividers
+ for(let l=1;l<=2;l++){
+  for(let k=0;k<9;k++){
+   let t=((k/9+frame*.008*speed/5)%1);
+   let y=roadY(t),x=W/2+(l-1.5)*(W*.14+t*W*.28);
+   ctx.strokeStyle='#4a90ba';ctx.globalAlpha=.25+t*.65;
+   ctx.lineWidth=1+t*3;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+2*t,y+Math.max(3,t*24));ctx.stroke();
+  }
+ }
+ ctx.globalAlpha=1;
+}
+function addObject(){
+ let type=Math.random()<.48?'coin':Math.random()<.55?'block':'barrier';
+ let ln=Math.floor(Math.random()*3);
+ objects.push({type,lane:ln,t:0,done:false});
+ if(Math.random()<.28)objects.push({type:'coin',lane:(ln+1)%3,t:-.08,done:false});
+}
+function drawObject(o){
+ let t=o.t,y=roadY(t),x=roadX(t,o.lane),s=.18+t*1.7;
+ if(o.type==='coin'){
+  let r=5+s*9,spin=Math.abs(Math.sin(frame*.12+o.t*10));
+  ctx.save();ctx.translate(x,y);
+  ctx.shadowColor='#ffd84c';ctx.shadowBlur=15;
+  ctx.fillStyle='#ffca35';ctx.beginPath();ctx.ellipse(0,0,r*(.3+spin*.7),r,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff3a1';ctx.lineWidth=2;ctx.stroke();
+  ctx.restore();
+ }else if(o.type==='block'){
+  let w=18+s*27,h=22+s*38;
+  ctx.save();ctx.translate(x,y-h/2);
+  ctx.shadowColor='#ff3f75';ctx.shadowBlur=16;
+  rounded(-w/2,-h/2,w,h,5+s*3,'#d72e58');
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffb5c9';ctx.lineWidth=2;
+  ctx.strokeRect(-w/2+4,-h/2+5,w-8,h-10);
+  ctx.fillStyle='#641e49';ctx.fillRect(-w*.35,h*.12,w*.7,h*.18);
+  ctx.restore();
+ }else{
+  let w=24+s*34,h=8+s*12;
+  ctx.save();ctx.translate(x,y-h/2);
+  ctx.shadowColor='#ff8a37';ctx.shadowBlur=18;
+  rounded(-w/2,-h/2,w,h,4,'#ff8038');
+  ctx.fillStyle='#ffe6a0';
+  for(let i=-1;i<=1;i++)ctx.fillRect(i*w*.25-2,-h*.35,4,h*.7);
+  ctx.restore();
+ }
+}
+function drawPlayer(){
+ let x=roadX(1,lane),ground=H*.84;
+ let jh=jump>0?Math.sin((1-jump/38)*Math.PI)*H*.18:0;
+ let sy=ground-jh;
+ let squish=slide>0?.52:1;
+ ctx.save();ctx.translate(x,sy);
+ // shadow
+ ctx.globalAlpha=.3;ctx.fillStyle='#00dfff';ctx.beginPath();ctx.ellipse(0,0,24,7,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ ctx.scale(1,squish);
+ // legs
+ ctx.strokeStyle='#71eaff';ctx.lineWidth=8;ctx.lineCap='round';
+ let run=Math.sin(frame*.32)*7;
+ ctx.beginPath();ctx.moveTo(-7,-25);ctx.lineTo(-9+run,-5);ctx.moveTo(7,-25);ctx.lineTo(10-run,-5);ctx.stroke();
+ // body armor
+ ctx.shadowColor='#00dfff';ctx.shadowBlur=18;
+ rounded(-15,-62,30,39,9,'#14b9db');
+ ctx.shadowBlur=0;
+ rounded(-9,-57,18,23,5,'#102744');
+ ctx.fillStyle='#77f5ff';ctx.fillRect(-4,-52,8,4);
+ // arms
+ ctx.strokeStyle='#b1f8ff';ctx.lineWidth=7;
+ ctx.beginPath();ctx.moveTo(-13,-53);ctx.lineTo(-23,-36+run*.4);ctx.moveTo(13,-53);ctx.lineTo(23,-39-run*.4);ctx.stroke();
+ // helmet
+ ctx.shadowColor='#55eaff';ctx.shadowBlur=15;
+ ctx.fillStyle='#d9faff';ctx.beginPath();ctx.arc(0,-72,14,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;
+ rounded(-11,-76,22,9,4,'#0879a8');
+ ctx.fillStyle='#a5ffff';ctx.fillRect(-7,-74,14,3);
+ // chest emblem
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,-47);ctx.lineTo(5,-40);ctx.lineTo(0,-33);ctx.lineTo(-5,-40);ctx.closePath();ctx.fill();
+ ctx.restore();
+}
+function burst(x,y,color){
+ for(let i=0;i<12;i++)particles.push({x,y,vx:(Math.random()-.5)*5,vy:(Math.random()-.5)*5,life:24,color});
+}
+function drawParticles(){
+ particles.forEach(p=>{
+  ctx.globalAlpha=p.life/24;ctx.fillStyle=p.color;
+  ctx.fillRect(p.x,p.y,4,4);
+  p.x+=p.vx;p.y+=p.vy;p.life--;
+ });ctx.globalAlpha=1;
+ particles=particles.filter(p=>p.life>0);
+}
+function update(){
+ if(!playing)return;
+ frame++;score+=speed*.035;speed=Math.min(10,speed+.0015);
+ if(jump>0)jump--;if(slide>0)slide--;
+ if(--spawn<=0){addObject();spawn=Math.max(24,65-speed*3);}
+ objects.forEach(o=>{
+  o.t+=.008*speed/5;
+  if(o.t>.88&&!o.done&&o.lane===lane){
+   if(o.type==='coin'){
+    if(o.t>.91){coins++;score+=10;o.done=true;burst(roadX(1,lane),H*.78,'#ffdc51');}
+   }else if(o.t>.94){
+    let safe=o.type==='block'?jump>8:slide>8;
+    if(!safe){endGame();return}
+    o.done=true;
+   }
+  }
+ });
+ objects=objects.filter(o=>o.t<1.08&&!o.done);
+ updateHUD();
+}
+function render(){
+ drawBackground();
+ objects.slice().sort((a,b)=>a.t-b.t).forEach(drawObject);
+ drawPlayer();drawParticles();
+ if(playing)update();
+ requestAnimationFrame(render);
+}
+function move(dir){
+ if(!playing)return;
+ if(dir==='left')lane=Math.max(0,lane-1);
+ if(dir==='right')lane=Math.min(2,lane+1);
+ if(dir==='up'&&jump===0&&slide===0)jump=38;
+ if(dir==='down'&&jump===0)slide=34;
+}
+let sx=0,sy=0;
+canvas.addEventListener('touchstart',e=>{
+ let t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+ e.preventDefault();let t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+ if(Math.max(Math.abs(dx),Math.abs(dy))<22)return;
+ if(Math.abs(dx)>Math.abs(dy))move(dx<0?'left':'right');
+ else move(dy<0?'up':'down');
+},{passive:false});
+addEventListener('keydown',e=>{
+ if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
+ if(e.key==='ArrowLeft'||e.key==='a')move('left');
+ if(e.key==='ArrowRight'||e.key==='d')move('right');
+ if(e.key==='ArrowUp'||e.key===' ')move('up');
+ if(e.key==='ArrowDown')move('down');
+});
+render();
+})();
 </script>
 </body>
 </html>
